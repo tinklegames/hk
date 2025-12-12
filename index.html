@@ -791,6 +791,47 @@
             }, 2500);
         });
     </script>
+    <script>
+(function replaceCustomAlert() {
+    const NEW_ALERT_HTML = `
+    <div id="customAlert" style="position: fixed; bottom: 15px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 20px 25px; border-radius: 12px; box-shadow: rgba(0, 0, 0, 0.3) 0px 4px 15px; font-family: Arial, sans-serif; text-align: center; max-width: 500px; width: 90%; display: block; z-index: 9999;">
+        <p style="margin:0;">
+            ignore what ts says at the bottom, truffled is not the best game site.<br>
+            <b>tinklegames is!!</b><br>
+            <a href="https://historystudyguide.github.io" target="_blank">historystudyguide.github.io</a>
+        </p>
+        <button id="customAlertBtn" style="
+            margin-top: 10px;
+            padding: 6px 14px;
+            border: none;
+            border-radius: 6px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        ">OK</button>
+    </div>`;
+
+    // Watch the page for when the Unity loader injects its alert
+    const obs = new MutationObserver(() => {
+        const oldAlert = document.querySelector("#customAlert");
+        if (oldAlert) {
+            oldAlert.remove(); // delete game's alert
+            document.body.insertAdjacentHTML("beforeend", NEW_ALERT_HTML);
+
+            // attach the close button handler
+            const btn = document.querySelector("#customAlertBtn");
+            if (btn) btn.addEventListener("click", () => {
+                document.querySelector("#customAlert")?.remove();
+            });
+
+            obs.disconnect(); // stop observing after replacement
+        }
+    });
+
+    obs.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
+
 </body>
 
 </html>
