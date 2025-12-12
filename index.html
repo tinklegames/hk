@@ -8,6 +8,8 @@
     <title>Unity WebGL Player | Hollow Knight</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+
     <style>
         html,
         body {
@@ -26,11 +28,531 @@
             left: 0;
         }
 
+        /* Hide default Unity loading bar (we use Tinkle loader instead) */
+        #unity-loading-bar {
+            display: none !important;
+        }
+
+        /* --- Tinkle-style loader overlay --- */
+        #loader-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding: 24px;
+            pointer-events: none;
+            z-index: 2000;
+        }
+
+        .loader-panel {
+            pointer-events: auto;
+            width: min(640px, 100%);
+            max-height: 60vh;
+            background: radial-gradient(circle at top left, #414750 0, #1a1b20 55%, #111319 100%);
+            border-radius: 16px;
+            border: 1px solid rgba(211, 165, 16, 0.6);
+            box-shadow:
+                0 0 20px rgba(0, 0, 0, 0.8),
+                0 0 32px rgba(211, 165, 16, 0.35);
+            padding: 14px 16px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        #loader-overlay.loader-hidden .loader-panel {
+            opacity: 0;
+            transform: translateY(18px);
+        }
+
+        .loader-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .loader-title {
+            font-family: "Orbitron", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 15px;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #d3a410, #b7870f, #ffe4a1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 6px rgba(211, 165, 16, 0.45));
+            white-space: nowrap;
+        }
+
+        .loader-status {
+            font-size: 12px;
+            color: #f2f2f2;
+            opacity: 0.9;
+            flex: 1;
+            text-align: right;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .loader-log {
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 10px;
+            padding: 8px 10px;
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 11px;
+            color: #e4e4e4;
+            line-height: 1.35;
+            overflow-y: auto;
+            max-height: 26vh;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        .loader-log::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .loader-log::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .loader-log::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+        }
+
+        .loader-log-line-system {
+            color: #9cc9ff;
+        }
+
+        .loader-log-line-ok {
+            color: #8ee38e;
+        }
+
+        .loader-log-line-warn {
+            color: #ffd27f;
+        }
+
+        .loader-progress-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        #tinkle-loading-bar {
+            position: relative;
+            width: 100%;
+            height: 10px;
+            background: #262831;
+            border-radius: 999px;
+            overflow: hidden;
+            box-shadow:
+                inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+                0 0 18px rgba(211, 165, 16, 0.35);
+        }
+
+        #tinkle-progress-bar-full {
+            width: 0%;
+            height: 100%;
+            background-image: linear-gradient(90deg, #6e5210, #d3a410, #ffe4a1);
+            box-shadow: 0 0 16px rgba(255, 228, 161, 0.75);
+            border-radius: inherit;
+            transition: width 0.1s ease-out;
+        }
+
+        .loader-progress-text {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 12px;
+            color: #f5f5f5;
+            opacity: 0.9;
+        }
+
+        #loader-percent {
+            font-weight: 600;
+        }
+
+        #loader-detail {
+            font-size: 11px;
+            opacity: 0.8;
+        }
+
+        /* --- Intro screen --- */
+        #intro-screen {
+            position: fixed;
+            inset: 0;
+            background-color: #414141;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.7s ease, visibility 0.7s ease;
+        }
+
+        #intro-screen.hidden-intro {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        #intro-logo-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            animation: fadeIn 1s ease-out forwards;
+        }
+
+        #intro-title {
+            font-family: "Orbitron", system-ui, -apple-system, BlinkMacSystemFont,
+              sans-serif;
+            font-size: 42px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #d3a410, #b7870f, #ffe4a1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 8px rgba(211, 165, 16, 0.4));
+            opacity: 0;
+            animation: titleFade 1s ease forwards 0.4s;
+            text-align: center;
+        }
+
+        @keyframes titleFade {
+            from {
+                opacity: 0;
+                transform: translateY(-12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes bounce {
+            0%,
+            100% {
+                translate: 0px 36px;
+            }
+            50% {
+                translate: 0px 46px;
+            }
+        }
+        @keyframes bounce2 {
+            0%,
+            100% {
+                translate: 0px 46px;
+            }
+            50% {
+                translate: 0px 56px;
+            }
+        }
+        @keyframes umbral {
+            0% {
+                stop-color: #d3a5102e;
+            }
+            50% {
+                stop-color: rgba(211, 165, 16, 0.519);
+            }
+            100% {
+                stop-color: #d3a5102e;
+            }
+        }
+        @keyframes particles {
+            0%,
+            100% {
+                translate: 0px 16px;
+            }
+            50% {
+                translate: 0px 6px;
+            }
+        }
+
+        #particles {
+            animation: particles 4s ease-in-out infinite;
+        }
+        #animatedStop {
+            animation: umbral 4s infinite;
+        }
+        #bounce {
+            animation: bounce 4s ease-in-out infinite;
+            translate: 0px 36px;
+        }
+        #bounce2 {
+            animation: bounce2 4s ease-in-out infinite;
+            translate: 0px 46px;
+            animation-delay: 0.5s;
+        }
     </style>
 </head>
 
 <body>
-    <div id="loading-text" style="color: white; font-size: 48px; font-family: cursive; text-align: center; margin-top: 20px;"> LOADING... </div>
+
+    <!-- Intro screen -->
+    <div id="intro-screen">
+      <div id="intro-logo-wrapper">
+        <div id="intro-title">Tinkle Games</div>
+
+        <svg xmlns="http://www.w3.org/2000/svg" height="200" width="200">
+          <g style="order: -1;">
+            <polygon
+              transform="rotate(45 100 100)"
+              stroke-width="1"
+              stroke="#d3a410"
+              fill="none"
+              points="70,70 148,50 130,130 50,150"
+              id="bounce"
+            ></polygon>
+            <polygon
+              transform="rotate(45 100 100)"
+              stroke-width="1"
+              stroke="#d3a410"
+              fill="none"
+              points="70,70 148,50 130,130 50,150"
+              id="bounce2"
+            ></polygon>
+            <polygon
+              transform="rotate(45 100 100)"
+              stroke-width="2"
+              stroke=""
+              fill="#414750"
+              points="70,70 150,50 130,130 50,150"
+            ></polygon>
+            <polygon
+              stroke-width="2"
+              stroke=""
+              fill="url(#gradiente)"
+              points="100,70 150,100 100,130 50,100"
+            ></polygon>
+            <defs>
+              <linearGradient
+                y2="100%"
+                x2="10%"
+                y1="0%"
+                x1="0%"
+                id="gradiente"
+              >
+                <stop
+                  style="stop-color: #1e2026;stop-opacity:1"
+                  offset="20%"
+                ></stop>
+                <stop
+                  style="stop-color:#414750;stop-opacity:1"
+                  offset="60%"
+                ></stop>
+              </linearGradient>
+            </defs>
+            <polygon
+              transform="translate(20, 31)"
+              stroke-width="2"
+              stroke=""
+              fill="#b7870f"
+              points="80,50 80,75 80,99 40,75"
+            ></polygon>
+            <polygon
+              transform="translate(20, 31)"
+              stroke-width="2"
+              stroke=""
+              fill="url(#gradiente2)"
+              points="40,-40 80,-40 80,99 40,75"
+            ></polygon>
+            <defs>
+              <linearGradient
+                y2="100%"
+                x2="0%"
+                y1="-17%"
+                x1="10%"
+                id="gradiente2"
+              >
+                <stop
+                  style="stop-color: #d3a51000;stop-opacity:1"
+                  offset="20%"
+                ></stop>
+                <stop
+                  style="stop-color:#d3a51054;stop-opacity:1"
+                  offset="100%"
+                  id="animatedStop"
+                ></stop>
+              </linearGradient>
+            </defs>
+            <polygon
+              transform="rotate(180 100 100) translate(20, 20)"
+              stroke-width="2"
+              stroke=""
+              fill="#d3a410"
+              points="80,50 80,75 80,99 40,75"
+            ></polygon>
+            <polygon
+              transform="rotate(0 100 100) translate(60, 20)"
+              stroke-width="2"
+              stroke=""
+              fill="url(#gradiente3)"
+              points="40,-40 80,-40 80,85 40,110.2"
+            ></polygon>
+            <defs>
+              <linearGradient
+                y2="100%"
+                x2="10%"
+                y1="0%"
+                x1="0%"
+                id="gradiente3"
+              >
+                <stop
+                  style="stop-color: #d3a51000;stop-opacity:1"
+                  offset="20%"
+                ></stop>
+                <stop
+                  style="stop-color:#d3a51054;stop-opacity:1"
+                  offset="100%"
+                ></stop>
+              </linearGradient>
+            </defs>
+            <polygon
+              transform="rotate(45 100 100) translate(80, 95)"
+              stroke-width="2"
+              stroke=""
+              fill="#ffe4a1"
+              points="5,0 5,5 0,5 0,0"
+              id="particles"
+            ></polygon>
+            <polygon
+              transform="rotate(45 100 100) translate(80, 55)"
+              stroke-width="2"
+              stroke=""
+              fill="#ccb069"
+              points="6,0 6,6 0,6 0,0"
+              id="particles"
+            ></polygon>
+            <polygon
+              transform="rotate(45 100 100) translate(70, 80)"
+              stroke-width="2"
+              stroke=""
+              fill="#fff"
+              points="2,0 2,2 0,2 0,0"
+              id="particles"
+            ></polygon>
+            <polygon
+              stroke-width="2"
+              stroke=""
+              fill="#292d34"
+              points="29.5,99.8 100,142 100,172 29.5,130"
+            ></polygon>
+            <polygon
+              transform="translate(50, 92)"
+              stroke-width="2"
+              stroke=""
+              fill="#1f2127"
+              points="50,50 120.5,8 120.5,35 50,80"
+            ></polygon>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Tinkle Loader Overlay -->
+    <div id="loader-overlay">
+        <div class="loader-panel">
+            <div class="loader-header">
+                <div class="loader-title">TINKLE LOADER</div>
+                <div class="loader-status" id="loader-status">Booting pipeline…</div>
+            </div>
+            <div class="loader-log" id="loader-log">
+                <!-- log lines injected by JS -->
+            </div>
+            <div class="loader-progress-wrapper">
+                <div id="tinkle-loading-bar">
+                    <div id="tinkle-progress-bar-full"></div>
+                </div>
+                <div class="loader-progress-text">
+                    <span id="loader-percent">0%</span>
+                    <span id="loader-detail">Waiting for downloads…</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tinkle loader helper -->
+    <script>
+        window.TINKLE_LOADER = (function () {
+            const logQueue = [];
+            let elementsReady = false;
+            let loaderLog, loaderStatus, loaderPercent, loaderDetail;
+
+            function initElements() {
+                loaderLog = document.getElementById("loader-log");
+                loaderStatus = document.getElementById("loader-status");
+                loaderPercent = document.getElementById("loader-percent");
+                loaderDetail = document.getElementById("loader-detail");
+
+                elementsReady = !!loaderLog;
+                if (elementsReady && logQueue.length) {
+                    logQueue.forEach(item => addLog(item.message, item.kind));
+                    logQueue.length = 0;
+                }
+            }
+
+            function addLog(message, kind = "system") {
+                if (!elementsReady) {
+                    logQueue.push({ message, kind });
+                    return;
+                }
+                if (!loaderLog) return;
+
+                const line = document.createElement("div");
+                const time = new Date().toLocaleTimeString("en-US", {
+                    hour12: false,
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                });
+
+                let cssClass = "loader-log-line-system";
+                if (kind === "ok") cssClass = "loader-log-line-ok";
+                else if (kind === "warn") cssClass = "loader-log-line-warn";
+
+                line.className = cssClass;
+                line.textContent = `[${time}] ${message}`;
+                loaderLog.appendChild(line);
+                loaderLog.scrollTop = loaderLog.scrollHeight;
+            }
+
+            function setStatus(text) {
+                if (!elementsReady) {
+                    logQueue.push({ message: text, kind: "system" });
+                }
+                if (loaderStatus) loaderStatus.textContent = text;
+            }
+
+            function setProgress(p, detail) {
+                if (loaderPercent) {
+                    loaderPercent.textContent = Math.round(p * 100) + "%";
+                }
+                if (loaderDetail && detail) {
+                    loaderDetail.textContent = detail;
+                }
+            }
+
+            if (document.readyState === "loading") {
+                document.addEventListener("DOMContentLoaded", initElements);
+            } else {
+                initElements();
+            }
+
+            addLog("Tinkle loader initialized.", "system");
+
+            return {
+                addLog,
+                setStatus,
+                setProgress
+            };
+        })();
+    </script>
+
+    <!-- Unity container -->
     <div hidden id="unity-container" class="unity-desktop">
         <canvas id="unity-canvas"></canvas>
         <div id="unity-loading-bar">
@@ -39,40 +561,62 @@
                 <div id="unity-progress-bar-full"></div>
             </div>
         </div>
-        <div id="unity-mobile-warning"> WebGL builds are not supported on mobile devices. </div>
+        <div id="unity-mobile-warning">WebGL builds are not supported on mobile devices.</div>
     </div>
+
     <script>
         var loadingText = document.querySelector("#loading-text");
         let totalBytes = 0;
         let loadedBytes = 0;
+
         async function getSize(url) {
             try {
-                const res = await fetch(url, {
-                    method: "HEAD"
-                });
+                const res = await fetch(url, { method: "HEAD" });
                 return parseInt(res.headers.get("Content-Length") || "0", 10);
             } catch {
                 return 0;
             }
         }
+
         async function fetchWithProgress(url) {
             const response = await fetch(url);
             const reader = response.body.getReader();
             let chunks = [];
             let received = 0;
+
+            const fileName = url.split("/").pop() || url;
+            window.TINKLE_LOADER.addLog("Downloading " + fileName + "…", "system");
+            window.TINKLE_LOADER.setStatus("Downloading " + fileName + "…");
+
             while (true) {
-                const {
-                    done,
-                    value
-                } = await reader.read();
+                const { done, value } = await reader.read();
                 if (done) break;
                 received += value.length;
                 loadedBytes += value.length;
                 chunks.push(value);
+
                 let mbDone = (loadedBytes / (1024 * 1024)).toFixed(2);
-                let mbTotal = '860.36';
-                loadingText.textContent = `LOADING... ${mbDone} MB / ${mbTotal} MB`;
+                let mbTotal = totalBytes > 0
+                    ? (totalBytes / (1024 * 1024)).toFixed(2)
+                    : "???.??";
+
+                if (loadingText) {
+                    loadingText.textContent = `LOADING... ${mbDone} MB / ${mbTotal} MB`;
+                }
+
+                let p = totalBytes > 0 ? loadedBytes / totalBytes : 0;
+                const detail = totalBytes > 0
+                    ? `Downloading assets… ${mbDone} / ${mbTotal} MB`
+                    : `Downloading assets… ${mbDone} MB`;
+
+                window.TINKLE_LOADER.setProgress(0.05 + p * 0.75, detail);
             }
+
+            window.TINKLE_LOADER.addLog(
+                "Finished " + fileName + " (" + (received / (1024 * 1024)).toFixed(2) + " MB).",
+                "ok"
+            );
+
             let fullBuffer = new Uint8Array(received);
             let offset = 0;
             for (let chunk of chunks) {
@@ -81,9 +625,16 @@
             }
             return fullBuffer.buffer;
         }
+
         async function mergeFiles(fileParts) {
+            window.TINKLE_LOADER.addLog(
+                "Merging " + fileParts.length + " parts into a single blob…",
+                "system"
+            );
             const buffers = await Promise.all(fileParts.map(part => fetchWithProgress(part)));
             const mergedBlob = new Blob(buffers);
+            const totalMB = (mergedBlob.size / (1024 * 1024)).toFixed(2);
+            window.TINKLE_LOADER.addLog("Merge complete (" + totalMB + " MB).", "ok");
             return URL.createObjectURL(mergedBlob);
         }
 
@@ -94,74 +645,152 @@
             }
             return parts;
         }
+
         (async () => {
-            const allParts = [...getParts("Build/hk.data", 1, 42), ...getParts("Build/hk.wasm", 1, 2), ];
-            const sizes = await Promise.all(allParts.map(getSize));
-            totalBytes = sizes.reduce((a, b) => a + b, 0);
-            const [dataUrl, wasmurl] = await Promise.all([
-                mergeFiles(getParts("Build/hk.data", 1, 42)),
-                mergeFiles(getParts("Build/hk.wasm", 1, 2)),
-            ]);
-            var buildUrl = "Build";
-            var loaderUrl = buildUrl + "/hk.loader.js";
-            var config = {
-                dataUrl: dataUrl,
-                frameworkUrl: buildUrl + "/hk.framework.js",
-                codeUrl: wasmurl,
-                streamingAssetsUrl: "StreamingAssets",
-                companyName: "Team Cherry & Truffled",
-                productName: "Hollow Knight",
-                productVersion: "1.0",
-            };
-            var container = document.querySelector("#unity-container");
-            container.hidden = false;
-            var canvas = document.querySelector("#unity-canvas");
-            var loadingBar = document.querySelector("#unity-loading-bar");
-            var progressBarFull = document.querySelector("#unity-progress-bar-full");
-            var fullscreenButton = document.querySelector("#unity-fullscreen-button");
-            var mobileWarning = document.querySelector("#unity-mobile-warning");
-            if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                container.className = "unity-mobile";
-                config.devicePixelRatio = 1;
-                mobileWarning.style.display = "block";
-                setTimeout(() => {
-                    mobileWarning.style.display = "none";
-                }, 5000);
-            } else {
-              if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-                var meta = document.createElement('meta');
-                meta.name = 'viewport';
-                meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-                document.getElementsByTagName('head')[0].appendChild(meta);
-                container.className = "unity-mobile";
-                canvas.className = "unity-mobile";
-            } else {
-                function resizeCanvas() {
-                    canvas.width = window.innerWidth;
-                    canvas.height = window.innerHeight;
-                    canvas.style.width = window.innerWidth + "px";
-                    canvas.style.height = window.innerHeight + "px";
+            try {
+                window.TINKLE_LOADER.setStatus("Preparing Hollow Knight data…");
+                window.TINKLE_LOADER.addLog("Collecting part sizes (HEAD requests)…", "system");
+
+                const allParts = [
+                    ...getParts("Build/hk.data", 1, 42),
+                    ...getParts("Build/hk.wasm", 1, 2),
+                ];
+                const sizes = await Promise.all(allParts.map(getSize));
+                totalBytes = sizes.reduce((a, b) => a + b, 0);
+                if (totalBytes > 0) {
+                    const mbTotal = (totalBytes / (1024 * 1024)).toFixed(2);
+                    window.TINKLE_LOADER.addLog(
+                        "Estimated total download: " + mbTotal + " MB.",
+                        "system"
+                    );
+                } else {
+                    window.TINKLE_LOADER.addLog(
+                        "Could not determine total size (HEAD blocked). Showing live progress only.",
+                        "warn"
+                    );
                 }
-                resizeCanvas();
-                window.addEventListener('resize', resizeCanvas);
+
+                window.TINKLE_LOADER.setStatus("Downloading game data…");
+
+                const [dataUrl, wasmurl] = await Promise.all([
+                    mergeFiles(getParts("Build/hk.data", 1, 42)),
+                    mergeFiles(getParts("Build/hk.wasm", 1, 2)),
+                ]);
+
+                window.TINKLE_LOADER.setStatus("Configuring Unity…");
+                window.TINKLE_LOADER.setProgress(0.85, "Preparing engine configuration…");
+
+                var buildUrl = "Build";
+                var loaderUrl = buildUrl + "/hk.loader.js";
+                var config = {
+                    dataUrl: dataUrl,
+                    frameworkUrl: buildUrl + "/hk.framework.js",
+                    codeUrl: wasmurl,
+                    streamingAssetsUrl: "StreamingAssets",
+                    companyName: "Team Cherry & Truffled",
+                    productName: "Hollow Knight",
+                    productVersion: "1.0",
+                };
+
+                var container = document.querySelector("#unity-container");
+                container.hidden = false;
+                var canvas = document.querySelector("#unity-canvas");
+                var loadingBar = document.querySelector("#unity-loading-bar");
+                var mobileWarning = document.querySelector("#unity-mobile-warning");
+                var tinkleBarFull = document.querySelector("#tinkle-progress-bar-full");
+
+                // Mobile / desktop sizing
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    container.className = "unity-mobile";
+                    config.devicePixelRatio = 1;
+                    mobileWarning.style.display = "block";
+                    setTimeout(() => {
+                        mobileWarning.style.display = "none";
+                    }, 5000);
+
+                    var meta = document.createElement('meta');
+                    meta.name = 'viewport';
+                    meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
+                    document.getElementsByTagName('head')[0].appendChild(meta);
+                } else {
+                    function resizeCanvas() {
+                        canvas.width = window.innerWidth;
+                        canvas.height = window.innerHeight;
+                        canvas.style.width = window.innerWidth + "px";
+                        canvas.style.height = window.innerHeight + "px";
+                    }
+                    resizeCanvas();
+                    window.addEventListener('resize', resizeCanvas);
+                }
+
+                if (loadingBar) loadingBar.style.display = "block";
+
+                var script = document.createElement("script");
+                script.src = loaderUrl;
+                script.onload = () => {
+                    window.TINKLE_LOADER.setStatus("Launching Unity engine…");
+                    window.TINKLE_LOADER.addLog("hk.loader.js loaded. Creating Unity instance…", "system");
+
+                    createUnityInstance(canvas, config, (progress) => {
+                        // Unity's own progress (0–1) → final 10% of Tinkle bar
+                        if (tinkleBarFull) {
+                            const existing = parseFloat(
+                                (document.getElementById("loader-percent")?.textContent || "0").replace("%", "")
+                            ) / 100;
+                            // Just map direct to 0.9 -> 1 based on Unity progress:
+                            const p = 0.9 + progress * 0.1;
+                            tinkleBarFull.style.width = (p * 100) + "%";
+                            window.TINKLE_LOADER.setProgress(
+                                p,
+                                "Initializing game world… " + Math.round(p * 100) + "%"
+                            );
+                        }
+                    }).then((unityInstance) => {
+                        if (loadingText) loadingText.remove();
+                        if (loadingBar) loadingBar.style.display = "none";
+                        canvas.style.display = "block";
+
+                        window.TINKLE_LOADER.setStatus("Ready!");
+                        window.TINKLE_LOADER.setProgress(1, "Game loaded.");
+                        window.TINKLE_LOADER.addLog(
+                            "Unity instance created successfully. Handing off to player.",
+                            "ok"
+                        );
+
+                        const overlay = document.getElementById("loader-overlay");
+                        if (overlay) {
+                            overlay.classList.add("loader-hidden");
+                            setTimeout(() => overlay.remove(), 800);
+                        }
+                    }).catch((message) => {
+                        alert(message);
+                        window.TINKLE_LOADER.setStatus("Error starting game.");
+                        window.TINKLE_LOADER.addLog("Unity startup error: " + message, "warn");
+                    });
+                };
+                script.onerror = () => {
+                    window.TINKLE_LOADER.setStatus("Error loading Unity loader.");
+                    window.TINKLE_LOADER.addLog("Failed to load hk.loader.js", "warn");
+                };
+                document.body.appendChild(script);
+            } catch (e) {
+                console.error(e);
+                window.TINKLE_LOADER.setStatus("Fatal error.");
+                window.TINKLE_LOADER.addLog("Unexpected error in boot pipeline: " + e, "warn");
             }
-            }
-            loadingBar.style.display = "block";
-            var script = document.createElement("script");
-            script.src = loaderUrl;
-            script.onload = () => {
-                createUnityInstance(canvas, config, (progress) => {
-                    progressBarFull.style.width = 100 * progress + "%";
-                }).then((unityInstance) => {
-                  loadingText.remove();
-                    loadingBar.style.display = "none";
-                    canvas.style.display = "block";
-                }).catch((message) => {
-                    alert(message);
-                });
-            };
-            document.body.appendChild(script);
         })();
+    </script>
+
+    <!-- Intro fade-out -->
+    <script>
+        window.addEventListener("load", () => {
+            const intro = document.getElementById("intro-screen");
+            if (!intro) return;
+            setTimeout(() => {
+                intro.classList.add("hidden-intro");
+                setTimeout(() => intro.remove(), 800);
+            }, 2500);
+        });
     </script>
 </body>
 
